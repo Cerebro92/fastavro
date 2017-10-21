@@ -359,8 +359,13 @@ def write_record(fo, datum, schema):
         if name not in datum and 'default' not in field and\
                 'null' not in field['type']:
             raise ValueError('no value and no default for %s' % name)
-        write_data(fo, datum.get(
-            name, field.get('default')), field['type'])
+
+        from fastavro.exceptions import InvalidSchemaException
+        try:
+            write_data(fo, datum.get(
+                name, field.get('default')), field['type'])
+        except Exception:
+            raise InvalidSchemaException(name, datum.get(name))
 
 
 LOGICAL_WRITERS = {
