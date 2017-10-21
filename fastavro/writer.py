@@ -20,6 +20,9 @@ except ImportError:
 from fastavro.const import MCS_PER_HOUR, MCS_PER_MINUTE, MCS_PER_SECOND,\
     MLS_PER_HOUR, MLS_PER_MINUTE, MLS_PER_SECOND, DAYS_SHIFT
 
+from fastavro.exceptions import InvalidSchemaException
+
+
 
 try:
     import simplejson as json
@@ -28,6 +31,7 @@ except ImportError:
 
 import datetime
 import decimal
+import itertools
 import time
 from binascii import crc32
 from collections import Iterable, Mapping
@@ -360,7 +364,6 @@ def write_record(fo, datum, schema):
                 'null' not in field['type']:
             raise ValueError('no value and no default for %s' % name)
 
-        from fastavro.exceptions import InvalidSchemaException
         try:
             write_data(fo, datum.get(
                 name, field.get('default')), field['type'])
@@ -614,10 +617,14 @@ def writer(fo,
         metadata,
         validator,
     )
-
-    for record in records:
-        output.write(record)
-    output.flush()
+    try:
+        for record in records:
+            output.write(record)
+    except InvalidSchemaException as e:
+        records = itertools.chain([record], records)
+        raise InvalidSchemaException(e.name, e.val, records)
+    finally:
+        output.flush()
 
 
 def schemaless_writer(fo, schema, record):
